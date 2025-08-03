@@ -1,0 +1,11 @@
+# ninja log v5
+4738	4919	7759186289371268	C:/RNCProjects/Hisab_app/android/app/build/intermediates/cxx/Debug/2q1p6854/obj/x86_64/libappmodules.so	df12b512fe502565
+2	45	0	C:/RNCProjects/Hisab_app/android/app/.cxx/Debug/2q1p6854/x86_64/CMakeFiles/cmake.verify_globs	f7d2058e78b6903e
+11	4451	7759186284628903	CMakeFiles/appmodules.dir/C_/RNCProjects/Hisab_app/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	3b61e8d0d025145d
+15	4737	7759186287429216	CMakeFiles/appmodules.dir/OnLoad.cpp.o	32d3ace27069e904
+41	1246	7759193725010195	build.ninja	bf690962f0b8b133
+0	12	0	clean	2a49a7d1729f1e9c
+3	48	0	C:/RNCProjects/Hisab_app/android/app/.cxx/Debug/2q1p6854/x86_64/CMakeFiles/cmake.verify_globs	f7d2058e78b6903e
+20	5630	7759193782937933	CMakeFiles/appmodules.dir/C_/RNCProjects/Hisab_app/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	3b61e8d0d025145d
+15	6148	7759193788042484	CMakeFiles/appmodules.dir/OnLoad.cpp.o	32d3ace27069e904
+6149	6417	7759193791041625	C:/RNCProjects/Hisab_app/android/app/build/intermediates/cxx/Debug/2q1p6854/obj/x86_64/libappmodules.so	df12b512fe502565

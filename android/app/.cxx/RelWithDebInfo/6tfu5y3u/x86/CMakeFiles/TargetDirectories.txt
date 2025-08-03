@@ -1,0 +1,3 @@
+C:/RNCProjects/Hisab_app/android/app/.cxx/RelWithDebInfo/6tfu5y3u/x86/CMakeFiles/appmodules.dir
+C:/RNCProjects/Hisab_app/android/app/.cxx/RelWithDebInfo/6tfu5y3u/x86/CMakeFiles/edit_cache.dir
+C:/RNCProjects/Hisab_app/android/app/.cxx/RelWithDebInfo/6tfu5y3u/x86/CMakeFiles/rebuild_cache.dir

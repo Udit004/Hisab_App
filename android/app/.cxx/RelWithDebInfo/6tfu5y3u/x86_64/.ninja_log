@@ -1,0 +1,5 @@
+# ninja log v5
+6	53	0	C:/RNCProjects/Hisab_app/android/app/.cxx/RelWithDebInfo/6tfu5y3u/x86_64/CMakeFiles/cmake.verify_globs	4b2e28286ae9f827
+11	5558	7759214675956945	CMakeFiles/appmodules.dir/C_/RNCProjects/Hisab_app/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	aeebe07f4a51ad7
+1	6033	7759214680608616	CMakeFiles/appmodules.dir/OnLoad.cpp.o	a77edb1f7bbe6071
+6033	6205	7759214682533499	C:/RNCProjects/Hisab_app/android/app/build/intermediates/cxx/RelWithDebInfo/6tfu5y3u/obj/x86_64/libappmodules.so	8d6e9576b7815a1e
