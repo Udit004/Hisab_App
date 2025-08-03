@@ -11,6 +11,7 @@ import {
   FlatList,
   Alert,
   TouchableWithoutFeedback,
+  Dimensions,
 } from 'react-native';
 
 interface CalculatorState {
@@ -30,6 +31,7 @@ interface HistoryItem {
 
 interface SettingsState {
   soundEnabled: boolean;
+  angleMode: 'deg' | 'rad';
 }
 
 interface ButtonProps {
@@ -38,6 +40,7 @@ interface ButtonProps {
   color?: string;
   textColor?: string;
   flex?: number;
+  fontSize?: number;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -46,13 +49,31 @@ const Button: React.FC<ButtonProps> = ({
   color = '#333',
   textColor = '#fff',
   flex = 1,
+  fontSize = 24,
 }) => {
   return (
     <TouchableOpacity
       style={[styles.button, {backgroundColor: color, flex}]}
       onPress={onPress}
       activeOpacity={0.7}>
-      <Text style={[styles.buttonText, {color: textColor}]}>{title}</Text>
+      <Text style={[styles.buttonText, {color: textColor, fontSize}]}>{title}</Text>
+    </TouchableOpacity>
+  );
+};
+
+const ScientificButton: React.FC<ButtonProps> = ({
+  onPress,
+  title,
+  color = '#444',
+  textColor = '#fff',
+  flex = 1,
+}) => {
+  return (
+    <TouchableOpacity
+      style={[styles.scientificButton, {backgroundColor: color, flex}]}
+      onPress={onPress}
+      activeOpacity={0.7}>
+      <Text style={[styles.scientificButtonText, {color: textColor}]}>{title}</Text>
     </TouchableOpacity>
   );
 };
@@ -82,7 +103,6 @@ const HistoryModal: React.FC<{
     }
   };
 
-  // Group history by date
   const groupedHistory = history.reduce((groups: {[key: string]: HistoryItem[]}, item) => {
     const dateKey = formatDate(item.timestamp);
     if (!groups[dateKey]) {
@@ -205,7 +225,47 @@ const SettingsModal: React.FC<{
         </View>
 
         <ScrollView style={styles.settingsContent}>
-          {/* Sound Settings */}
+          <View style={styles.settingSection}>
+            <Text style={styles.sectionTitle}>Angle Mode</Text>
+            
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>Degrees</Text>
+              <TouchableOpacity
+                style={[
+                  styles.switch,
+                  settings.angleMode === 'deg' && styles.switchOn,
+                ]}
+                onPress={() => updateSetting('angleMode', 'deg')}>
+                <View
+                  style={[
+                    styles.switchThumb,
+                    settings.angleMode === 'deg' && styles.switchThumbOn,
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>Radians</Text>
+              <TouchableOpacity
+                style={[
+                  styles.switch,
+                  settings.angleMode === 'rad' && styles.switchOn,
+                ]}
+                onPress={() => updateSetting('angleMode', 'rad')}>
+                <View
+                  style={[
+                    styles.switchThumb,
+                    settings.angleMode === 'rad' && styles.switchThumbOn,
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.settingDescription}>
+              Current mode: {settings.angleMode === 'deg' ? 'Degrees' : 'Radians'}
+            </Text>
+          </View>
+
           <View style={styles.settingSection}>
             <Text style={styles.sectionTitle}>Audio</Text>
             
@@ -230,14 +290,17 @@ const SettingsModal: React.FC<{
             </Text>
           </View>
 
-          {/* About Section */}
           <View style={styles.settingSection}>
             <Text style={styles.sectionTitle}>About</Text>
             <Text style={styles.aboutText}>
-              Advanced Calculator with History & Cursor
-              {'\n'}Version 2.1.0
+              Scientific Calculator with History & Cursor
+              {'\n'}Version 3.0.0
               {'\n'}
               {'\n'}Features:
+              {'\n'}• Scientific functions (sin, cos, tan, log, ln, etc.)
+              {'\n'}• Trigonometric functions with degree/radian modes
+              {'\n'}• Power and root functions
+              {'\n'}• Constants (π, e)
               {'\n'}• Cursor-based expression editing
               {'\n'}• Touch anywhere to position cursor
               {'\n'}• Complete calculation history
@@ -262,11 +325,13 @@ const Calculator: React.FC = () => {
 
   const [settings, setSettings] = useState<SettingsState>({
     soundEnabled: false,
+    angleMode: 'deg',
   });
 
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isScientific, setIsScientific] = useState(false);
 
   const insertAtCursor = (text: string) => {
     const {expression, cursorPosition, isResultShown} = state;
@@ -275,13 +340,35 @@ const Calculator: React.FC = () => {
     let newCursorPosition = cursorPosition;
     
     if (isResultShown && /[0-9.]/.test(text)) {
-      // Start new expression if inserting number after result
       newExpression = text;
       newCursorPosition = 1;
     } else {
-      // Insert at cursor position
       newExpression = expression.slice(0, cursorPosition) + text + expression.slice(cursorPosition);
       newCursorPosition = cursorPosition + text.length;
+    }
+    
+    setState({
+      ...state,
+      expression: newExpression,
+      cursorPosition: newCursorPosition,
+      isResultShown: false,
+      result: evaluateExpression(newExpression) || state.result,
+    });
+  };
+
+  const insertFunction = (funcName: string) => {
+    const {expression, cursorPosition, isResultShown} = state;
+    
+    let newExpression = expression;
+    let newCursorPosition = cursorPosition;
+    const functionText = `${funcName}(`;
+    
+    if (isResultShown) {
+      newExpression = functionText;
+      newCursorPosition = functionText.length;
+    } else {
+      newExpression = expression.slice(0, cursorPosition) + functionText + expression.slice(cursorPosition);
+      newCursorPosition = cursorPosition + functionText.length;
     }
     
     setState({
@@ -297,13 +384,12 @@ const Calculator: React.FC = () => {
     const {expression, cursorPosition, isResultShown} = state;
     
     if (isResultShown) {
-      // Clear everything if result is shown
       clear();
       return;
     }
     
     if (cursorPosition === 0 || expression.length === 0) {
-      return; // Nothing to delete
+      return;
     }
     
     const newExpression = expression.slice(0, cursorPosition - 1) + expression.slice(cursorPosition);
@@ -344,26 +430,41 @@ const Calculator: React.FC = () => {
     if (!expr || expr.trim() === '') return '';
     
     try {
-      // Replace display operators with JavaScript operators
       let jsExpression = expr
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
-        .replace(/\s+/g, ''); // Remove spaces
-      
-      // Check if expression is valid (basic validation)
-      if (!/^[0-9+\-*/.() ]+$/.test(jsExpression)) {
+        .replace(/\s+/g, '');
+
+      jsExpression = jsExpression
+        .replace(/π/g, Math.PI.toString())
+        .replace(/e(?![0-9])/g, Math.E.toString())
+        .replace(/sin\(/g, `Math.sin(${settings.angleMode === 'deg' ? 'Math.PI/180*' : ''}`)
+        .replace(/cos\(/g, `Math.cos(${settings.angleMode === 'deg' ? 'Math.PI/180*' : ''}`)
+        .replace(/tan\(/g, `Math.tan(${settings.angleMode === 'deg' ? 'Math.PI/180*' : ''}`)
+        .replace(/asin\(/g, `(Math.asin(`)
+        .replace(/acos\(/g, `(Math.acos(`)
+        .replace(/atan\(/g, `(Math.atan(`)
+        .replace(/ln\(/g, 'Math.log(')
+        .replace(/log\(/g, 'Math.log10(')
+        .replace(/sqrt\(/g, 'Math.sqrt(')
+        .replace(/\^/g, '**');
+
+      if (!/^[0-9+\-*/.()MathEsincoatqlgrpe \^*]+$/.test(jsExpression)) {
         return '';
       }
       
-      // Evaluate the expression
       const result = Function('"use strict"; return (' + jsExpression + ')')();
       
-      if (isNaN(result) || !isFinite(result)) {
+      let finalResult = result;
+      if (settings.angleMode === 'deg' && (expr.includes('asin(') || expr.includes('acos(') || expr.includes('atan('))) {
+        finalResult = result * 180 / Math.PI;
+      }
+      
+      if (isNaN(finalResult) || !isFinite(finalResult)) {
         return 'Error';
       }
       
-      // Format result
-      return parseFloat(result.toFixed(10)).toString();
+      return parseFloat(finalResult.toFixed(10)).toString();
     } catch (error) {
       return '';
     }
@@ -408,16 +509,13 @@ const Calculator: React.FC = () => {
   const handlePercentage = () => {
     const {expression, cursorPosition} = state;
     
-    // Find the number at or before cursor position
     let start = cursorPosition;
     let end = cursorPosition;
     
-    // Move back to find start of number
     while (start > 0 && /[0-9.]/.test(expression[start - 1])) {
       start--;
     }
     
-    // Move forward to find end of number
     while (end < expression.length && /[0-9.]/.test(expression[end])) {
       end++;
     }
@@ -442,16 +540,13 @@ const Calculator: React.FC = () => {
   const handlePlusMinus = () => {
     const {expression, cursorPosition} = state;
     
-    // Find the number at or before cursor position
     let start = cursorPosition;
     let end = cursorPosition;
     
-    // Move back to find start of number
     while (start > 0 && /[0-9.]/.test(expression[start - 1])) {
       start--;
     }
     
-    // Move forward to find end of number
     while (end < expression.length && /[0-9.]/.test(expression[end])) {
       end++;
     }
@@ -509,7 +604,6 @@ const Calculator: React.FC = () => {
 
   const handleExpressionPress = (event: any) => {
     if (state.isResultShown) {
-      // If result is shown, reset to new expression
       setState({
         ...state,
         expression: '',
@@ -520,14 +614,10 @@ const Calculator: React.FC = () => {
       return;
     }
 
-    // Calculate approximate cursor position based on touch
     const {expression} = state;
     if (expression.length === 0) return;
 
     const touchX = event.nativeEvent.locationX;
-    
-    // Rough estimation - this could be made more precise with text measurement
-    // Assuming average character width of ~12px for the expression font
     const charWidth = 14;
     const estimatedPosition = Math.round(touchX / charWidth);
     const newPosition = Math.max(0, Math.min(estimatedPosition, expression.length));
@@ -550,17 +640,159 @@ const Calculator: React.FC = () => {
     setShowHistory(false);
   };
 
+  const renderBasicButtons = () => (
+    <>
+      <View style={styles.row}>
+        <Button
+          title="C"
+          onPress={clear}
+          color="#a6a6a6"
+          textColor="#000"
+        />
+        <Button
+          title="⌫"
+          onPress={deleteAtCursor}
+          color="#a6a6a6"
+          textColor="#000"
+        />
+        <Button
+          title="◀"
+          onPress={() => moveCursor('left')}
+          color="#a6a6a6"
+          textColor="#000"
+        />
+        <Button
+          title="▶"
+          onPress={() => moveCursor('right')}
+          color="#a6a6a6"
+          textColor="#000"
+        />
+      </View>
+
+      <View style={styles.row}>
+        <Button
+          title="±"
+          onPress={handlePlusMinus}
+          color="#a6a6a6"
+          textColor="#000"
+        />
+        <Button
+          title="%"
+          onPress={handlePercentage}
+          color="#a6a6a6"
+          textColor="#000"
+        />
+        <Button
+          title="("
+          onPress={() => insertAtCursor('(')}
+          color="#a6a6a6"
+          textColor="#000"
+        />
+        <Button
+          title=")"
+          onPress={() => insertAtCursor(')')}
+          color="#a6a6a6"
+          textColor="#000"
+        />
+      </View>
+
+      <View style={styles.row}>
+        <Button title="7" onPress={() => insertAtCursor('7')} />
+        <Button title="8" onPress={() => insertAtCursor('8')} />
+        <Button title="9" onPress={() => insertAtCursor('9')} />
+        <Button
+          title="÷"
+          onPress={() => insertAtCursor(' ÷ ')}
+          color="#ff9500"
+        />
+      </View>
+
+      <View style={styles.row}>
+        <Button title="4" onPress={() => insertAtCursor('4')} />
+        <Button title="5" onPress={() => insertAtCursor('5')} />
+        <Button title="6" onPress={() => insertAtCursor('6')} />
+        <Button
+          title="×"
+          onPress={() => insertAtCursor(' × ')}
+          color="#ff9500"
+        />
+      </View>
+
+      <View style={styles.row}>
+        <Button title="1" onPress={() => insertAtCursor('1')} />
+        <Button title="2" onPress={() => insertAtCursor('2')} />
+        <Button title="3" onPress={() => insertAtCursor('3')} />
+        <Button
+          title="-"
+          onPress={() => insertAtCursor(' - ')}
+          color="#ff9500"
+        />
+      </View>
+
+      <View style={styles.row}>
+        <Button title="0" onPress={() => insertAtCursor('0')} />
+        <Button title="." onPress={() => insertAtCursor('.')} />
+        <Button title="=" onPress={handleEquals} color="#ff9500" />
+        <Button
+          title="+"
+          onPress={() => insertAtCursor(' + ')}
+          color="#ff9500"
+        />
+      </View>
+    </>
+  );
+
+  const renderScientificButtons = () => (
+    <>
+      <View style={styles.scientificRow}>
+        <ScientificButton title="sin" onPress={() => insertFunction('sin')} />
+        <ScientificButton title="cos" onPress={() => insertFunction('cos')} />
+        <ScientificButton title="tan" onPress={() => insertFunction('tan')} />
+        <ScientificButton title="ln" onPress={() => insertFunction('ln')} />
+        <ScientificButton title="log" onPress={() => insertFunction('log')} />
+      </View>
+
+      <View style={styles.scientificRow}>
+        <ScientificButton title="asin" onPress={() => insertFunction('asin')} />
+        <ScientificButton title="acos" onPress={() => insertFunction('acos')} />
+        <ScientificButton title="atan" onPress={() => insertFunction('atan')} />
+        <ScientificButton title="√" onPress={() => insertFunction('sqrt')} />
+        <ScientificButton title="x²" onPress={() => insertAtCursor('^2')} />
+      </View>
+
+      <View style={styles.scientificRow}>
+        <ScientificButton title="π" onPress={() => insertAtCursor('π')} />
+        <ScientificButton title="e" onPress={() => insertAtCursor('e')} />
+        <ScientificButton title="^" onPress={() => insertAtCursor('^')} />
+        <ScientificButton title="!" onPress={() => insertAtCursor('!')} />
+        <ScientificButton 
+          title={settings.angleMode.toUpperCase()} 
+          onPress={() => setSettings({...settings, angleMode: settings.angleMode === 'deg' ? 'rad' : 'deg'})}
+          color="#ff9500"
+        />
+      </View>
+
+      {renderBasicButtons()}
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => setShowHistory(true)}
           style={styles.headerIconButton}>
           <Text style={styles.headerIconText}>📋</Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity 
+          onPress={() => setIsScientific(!isScientific)}
+          style={styles.headerIconButton}>
+          <Text style={styles.headerIconText}>🔬</Text>
+        </TouchableOpacity>
+        
         <TouchableOpacity 
           onPress={() => setShowSettings(true)}
           style={styles.headerIconButton}>
@@ -568,16 +800,19 @@ const Calculator: React.FC = () => {
         </TouchableOpacity>
       </View>
       
-      {/* Display */}
+      <View style={styles.modeIndicator}>
+        <Text style={styles.modeText}>
+          {isScientific ? 'Scientific' : 'Basic'} • {settings.angleMode.toUpperCase()}
+        </Text>
+      </View>
+      
       <View style={styles.displayContainer}>
-        {/* Expression Display with Cursor */}
         <TouchableWithoutFeedback onPress={handleExpressionPress}>
           <View style={styles.expressionContainer}>
             {renderExpressionWithCursor()}
           </View>
         </TouchableWithoutFeedback>
         
-        {/* Result Display */}
         <View style={styles.resultContainer}>
           <Text style={styles.displayText} numberOfLines={1} adjustsFontSizeToFit>
             {state.result}
@@ -585,114 +820,10 @@ const Calculator: React.FC = () => {
         </View>
       </View>
 
-      {/* Buttons */}
-      <View style={styles.buttonContainer}>
-        {/* Row 1 - Function buttons */}
-        <View style={styles.row}>
-          <Button
-            title="C"
-            onPress={clear}
-            color="#a6a6a6"
-            textColor="#000"
-          />
-          <Button
-            title="⌫"
-            onPress={deleteAtCursor}
-            color="#a6a6a6"
-            textColor="#000"
-          />
-          <Button
-            title="◀"
-            onPress={() => moveCursor('left')}
-            color="#a6a6a6"
-            textColor="#000"
-          />
-          <Button
-            title="▶"
-            onPress={() => moveCursor('right')}
-            color="#a6a6a6"
-            textColor="#000"
-          />
-        </View>
+      <ScrollView style={styles.buttonContainer} showsVerticalScrollIndicator={false}>
+        {isScientific ? renderScientificButtons() : renderBasicButtons()}
+      </ScrollView>
 
-        {/* Row 2 - Special functions */}
-        <View style={styles.row}>
-          <Button
-            title="±"
-            onPress={handlePlusMinus}
-            color="#a6a6a6"
-            textColor="#000"
-          />
-          <Button
-            title="%"
-            onPress={handlePercentage}
-            color="#a6a6a6"
-            textColor="#000"
-          />
-          <Button
-            title="("
-            onPress={() => insertAtCursor('(')}
-            color="#a6a6a6"
-            textColor="#000"
-          />
-          <Button
-            title=")"
-            onPress={() => insertAtCursor(')')}
-            color="#a6a6a6"
-            textColor="#000"
-          />
-        </View>
-
-        {/* Row 3 */}
-        <View style={styles.row}>
-          <Button title="7" onPress={() => insertAtCursor('7')} />
-          <Button title="8" onPress={() => insertAtCursor('8')} />
-          <Button title="9" onPress={() => insertAtCursor('9')} />
-          <Button
-            title="÷"
-            onPress={() => insertAtCursor(' ÷ ')}
-            color="#ff9500"
-          />
-        </View>
-
-        {/* Row 4 */}
-        <View style={styles.row}>
-          <Button title="4" onPress={() => insertAtCursor('4')} />
-          <Button title="5" onPress={() => insertAtCursor('5')} />
-          <Button title="6" onPress={() => insertAtCursor('6')} />
-          <Button
-            title="×"
-            onPress={() => insertAtCursor(' × ')}
-            color="#ff9500"
-          />
-        </View>
-
-        {/* Row 5 */}
-        <View style={styles.row}>
-          <Button title="1" onPress={() => insertAtCursor('1')} />
-          <Button title="2" onPress={() => insertAtCursor('2')} />
-          <Button title="3" onPress={() => insertAtCursor('3')} />
-          <Button
-            title="-"
-            onPress={() => insertAtCursor(' - ')}
-            color="#ff9500"
-          />
-        </View>
-
-        {/* Row 6 */}
-        <View style={styles.row}>
-          <Button title="0" onPress={() => insertAtCursor('0')} />
-          <Button title="." onPress={() => insertAtCursor('.')} />
-          <Button title="=" onPress={handleEquals} color="#ff9500" />
-          <Button
-            title="+"
-            onPress={() => insertAtCursor(' + ')}
-            color="#ff9500"
-          />
-        </View>
-      </View>
-
-      {/* History Modal */}
       <HistoryModal
         visible={showHistory}
         history={history}
@@ -701,7 +832,6 @@ const Calculator: React.FC = () => {
         onSelectItem={selectHistoryItem}
       />
 
-      {/* Settings Modal */}
       <SettingsModal
         visible={showSettings}
         settings={settings}
@@ -729,6 +859,15 @@ const styles = StyleSheet.create({
   headerIconText: {
     fontSize: 24,
     color: '#fff',
+  },
+  modeIndicator: {
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  modeText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '500',
   },
   displayContainer: {
     flex: 1,
@@ -772,11 +911,17 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+    maxHeight: Dimensions.get('window').height * 0.6,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  scientificRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   button: {
     justifyContent: 'center',
@@ -788,6 +933,19 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 24,
     fontWeight: '400',
+  },
+  scientificButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 45,
+    borderRadius: 22.5,
+    marginHorizontal: 2,
+    backgroundColor: '#444',
+  },
+  scientificButtonText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#fff',
   },
   
   // Modal Styles
